@@ -1,0 +1,21 @@
+--New Customers acquired
+
+
+WITH first_seen AS (
+  SELECT
+    user_id,
+    MIN(TO_DATE(date_id, 'yyyyMMdd')) AS first_seen_at
+  FROM general.public.gold_all_missions_enriched
+  WHERE general.public.gold_all_missions_enriched.ride_service_name = 'san francisco'
+  GROUP BY user_id
+)
+
+SELECT
+  DATE_TRUNC('month', fs.first_seen_at) AS first_seen_month_year,
+  COUNT(DISTINCT fs.user_id) AS users_first_seen
+FROM first_seen fs
+INNER JOIN experimental.default.paul_sf_activated_02062026 a
+  ON fs.user_id = a.user_id
+WHERE fs.first_seen_at >= DATE('2025-11-18')
+GROUP BY 1
+ORDER BY 1;
