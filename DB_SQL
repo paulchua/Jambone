@@ -19,3 +19,42 @@ INNER JOIN experimental.default.paul_sf_activated_02062026 a
 WHERE fs.first_seen_at >= DATE('2025-11-18')
 GROUP BY 1
 ORDER BY 1;
+
+
+
+
+--New Customers acquired (cumulative)
+WITH first_seen AS (
+  SELECT
+    user_id,
+    MIN(TO_DATE(date_id, 'yyyyMMdd')) AS first_seen_at
+  FROM general.public.gold_all_missions_enriched
+  GROUP BY user_id
+),
+
+filtered AS (
+  SELECT
+    fs.user_id,
+    fs.first_seen_at
+  FROM first_seen fs
+  INNER JOIN experimental.default.paul_sf_activated_02062026 a
+    ON fs.user_id = a.user_id
+  WHERE fs.first_seen_at >= DATE('2025-11-18')
+),
+
+monthly AS (
+  SELECT
+    DATE_TRUNC('month', first_seen_at) AS first_seen_month_year,
+    COUNT(DISTINCT user_id) AS users_first_seen
+  FROM filtered
+  GROUP BY 1
+)
+
+SELECT
+  first_seen_month_year,
+  users_first_seen,
+  SUM(users_first_seen)
+    OVER (ORDER BY first_seen_month_year
+          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_users
+FROM monthly
+ORDER BY first_seen_month_year;
